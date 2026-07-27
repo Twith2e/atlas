@@ -1,0 +1,86 @@
+basePath: /api/v1
+definitions:
+  auth.RegistrationRequest:
+    properties:
+      confirm_password:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      password:
+        type: string
+    required:
+    - confirm_password
+    - email
+    - first_name
+    - last_name
+    - password
+    type: object
+  auth.RegistrationResponse:
+    properties:
+      tokens:
+        $ref: '#/definitions/auth.Tokens'
+      user:
+        $ref: '#/definitions/auth.UserResponse'
+    type: object
+  auth.Tokens:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  auth.UserResponse:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      public_id:
+        type: string
+    type: object
+  response.APIError:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API documentation for Atlas.
+  title: Atlas API
+  version: "1.0"
+paths:
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account and returns access/refresh tokens
+      parameters:
+      - description: Registration payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RegistrationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.RegistrationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIError'
+      summary: Register a new user
+      tags:
+      - auth
+swagger: "2.0"
