@@ -42,8 +42,20 @@ Swagger UI is served at `http://localhost:8080/swagger/index.html`.
 
 After adding or changing `@`-annotated handler comments, regenerate the spec:
 ```
-swag init -g cmd/api/main.go -o docs
+swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal
 ```
+
+Both flags are required: the handlers document their responses as `response.APIResponse[T]`, and `swag` will not resolve that generic envelope without them.
+
+## Auth: client requirements
+
+The refresh token is stored in an `HttpOnly`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Access tokens live 15 minutes; sessions live 30 days of inactivity.
+
+`POST /api/v1/auth/refresh` **rotates** the refresh token on every call, and revokes the entire session if a token that has already been rotated away is presented (stolen-token detection).
+
+Because of that, clients **must serialize refresh attempts**: keep a single in-flight `/refresh` request and have all concurrent `401`s await it. Firing two refreshes in parallel means the second one presents an already-rotated token, which the server treats as reuse and logs the user out.
+
+Logout is best-effort by design — clear local auth state and redirect regardless of the response status.
 
 ## Project structure
 

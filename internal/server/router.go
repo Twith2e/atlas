@@ -3,6 +3,7 @@ package server
 import (
 	"atlas/internal/config"
 	"atlas/internal/database"
+	"atlas/internal/middleware"
 	"atlas/internal/modules/auth"
 	"atlas/internal/providers/tokens"
 	"database/sql"
@@ -50,8 +51,8 @@ func NewRouter(cfg *config.Config) (*gin.Engine, error) {
 
 	authRepo := auth.NewRepository(db)
 	authService := auth.NewService(authRepo, db, tokenGenerator)
-	authHandler := auth.NewHandler(authService)
-	auth.RegisterRoutes(apiV1, authHandler)
+	authHandler := auth.NewHandler(authService, cfg.Env)
+	auth.RegisterRoutes(apiV1, middleware.AuthMiddleware(tokenGenerator, authService), middleware.SessionGuard(tokenGenerator), middleware.RequireActiveSession(authService), authHandler)
 
 	return r, nil
 }

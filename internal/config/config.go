@@ -8,6 +8,7 @@ type Config struct {
 	TermiiAPIKey       string
 	AccessTokenSecret  string
 	RefreshTokenSecret string
+	Env                string
 }
 
 func Load() *Config {
@@ -17,6 +18,7 @@ func Load() *Config {
 		TermiiAPIKey:       getEnv("TERMII_API_KEY", ""),
 		AccessTokenSecret:  getEnv("ACCESS_TOKEN_SECRET", ""),
 		RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", ""),
+		Env:                getEnv("ENV", "development"),
 	}
 }
 

@@ -15,9 +15,125 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/login": {
+            "post": {
+                "description": "Authenticates an email and password, opens a new session, and returns an access token.\nThe refresh token is returned as an HttpOnly, SameSite=Strict cookie scoped to /api/v1/auth — it is never included in the response body.\nAn unknown email and a wrong password return the same 401 so the endpoint cannot be used to discover registered addresses.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Log in",
+                "parameters": [
+                    {
+                        "description": "Login payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_auth.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.APIResponse-internal_modules_auth_LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid email or password",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "description": "Revokes the current session and expires the refresh token cookie. Requires the refresh token cookie.\nRevoking an already-revoked session is a no-op success, so repeat calls are safe.\nClients should clear local auth state and redirect regardless of the response status — logout is best-effort by design.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Log out",
+                "responses": {
+                    "200": {
+                        "description": "Session revoked and cookie cleared",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.MessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing or invalid refresh token cookie",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Issues a new access token and rotates the refresh token cookie. Requires the refresh token cookie.\nThe session id (sid) is preserved across refreshes, so access tokens issued earlier in the session remain valid until they expire on their own.\n\nNOTE — clients must serialize refresh calls. Every call rotates the refresh token, and presenting a token that has already been rotated away is treated as theft: the whole session is revoked and the user must log in again. Keep a single in-flight request to this endpoint and have all concurrent 401s await it. Firing two refreshes in parallel will log the user out.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh the access token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.APIResponse-internal_modules_auth_RefreshResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Missing/invalid cookie, inactive session, or token reuse detected (session revoked)",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/register": {
             "post": {
-                "description": "Creates a new user account and returns access/refresh tokens",
+                "description": "Creates a user account, opens a session, and returns an access token.\nThe refresh token is returned as an HttpOnly, SameSite=Strict cookie scoped to /api/v1/auth — it is never included in the response body.",
                 "consumes": [
                     "application/json"
                 ],
@@ -35,21 +151,39 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.RegistrationRequest"
+                            "$ref": "#/definitions/internal_modules_auth.RegistrationRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/auth.RegistrationResponse"
+                            "$ref": "#/definitions/atlas_internal_response.APIResponse-internal_modules_auth_RegistrationResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request body",
                         "schema": {
-                            "$ref": "#/definitions/response.APIError"
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already registered",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Passwords do not match, or password fails policy",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/atlas_internal_response.ErrorResponse"
                         }
                     }
                 }
@@ -57,7 +191,116 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "auth.RegistrationRequest": {
+        "atlas_internal_response.APIError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "atlas_internal_response.APIResponse-internal_modules_auth_LoginResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "atlas_internal_response.APIResponse-internal_modules_auth_RefreshResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_modules_auth.RefreshResponse"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "atlas_internal_response.APIResponse-internal_modules_auth_RegistrationResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_modules_auth.RegistrationResponse"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "atlas_internal_response.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/atlas_internal_response.APIError"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "atlas_internal_response.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_auth.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_auth.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "tokens": {
+                    "$ref": "#/definitions/internal_modules_auth.Tokens"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal_modules_auth.UserResponse"
+                }
+            }
+        },
+        "internal_modules_auth.RefreshResponse": {
+            "type": "object",
+            "properties": {
+                "tokens": {
+                    "$ref": "#/definitions/internal_modules_auth.Tokens"
+                }
+            }
+        },
+        "internal_modules_auth.RegistrationRequest": {
             "type": "object",
             "required": [
                 "confirm_password",
@@ -84,29 +327,26 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.RegistrationResponse": {
+        "internal_modules_auth.RegistrationResponse": {
             "type": "object",
             "properties": {
                 "tokens": {
-                    "$ref": "#/definitions/auth.Tokens"
+                    "$ref": "#/definitions/internal_modules_auth.Tokens"
                 },
                 "user": {
-                    "$ref": "#/definitions/auth.UserResponse"
+                    "$ref": "#/definitions/internal_modules_auth.UserResponse"
                 }
             }
         },
-        "auth.Tokens": {
+        "internal_modules_auth.Tokens": {
             "type": "object",
             "properties": {
                 "access_token": {
                     "type": "string"
-                },
-                "refresh_token": {
-                    "type": "string"
                 }
             }
         },
-        "auth.UserResponse": {
+        "internal_modules_auth.UserResponse": {
             "type": "object",
             "properties": {
                 "email": {
@@ -119,17 +359,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "public_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "response.APIError": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "message": {
                     "type": "string"
                 }
             }

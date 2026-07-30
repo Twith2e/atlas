@@ -2,8 +2,11 @@ package auth
 
 import (
 	"atlas/internal/domain"
+	appErr "atlas/internal/errors"
 	"context"
 	"database/sql"
+	"log"
+	"time"
 )
 
 type DBTX interface {
@@ -77,6 +80,70 @@ func (r *Repository) GetSessionByTokenHash(ctx context.Context, id string) (*dom
 	err := r.db.
 		QueryRowContext(ctx, query, id).
 		Scan(&session.ID, &session.UserID, &session.JTI, &session.SessionID, &session.TokenHash, &session.ExpiresAt, &session.RevokedAt, &session.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
+func (r *Repository) IsSessionActive(ctx context.Context, sessionID string) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM sessions WHERE sid = $1 AND expires_at > NOW() AND revoked_at IS NULL)`
+
+	var active bool
+	err := r.db.
+		QueryRowContext(ctx, query, sessionID).
+		Scan(&active)
+	if err != nil {
+		return false, err
+	}
+	return active, nil
+}
+
+func (r *Repository) RevokeSession(ctx context.Context, sessionID string) error {
+	query := `UPDATE sessions SET revoked_at = NOW() WHERE sid = $1`
+
+	sqlResult, err := r.db.ExecContext(ctx, query, sessionID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := sqlResult.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		log.Printf("revoke session: no session found for sid %s (already revoked or nonexistent)", sessionID)
+	}
+
+	return nil
+}
+
+func (r *Repository) UpdateSessionTokenHash(ctx context.Context, sessionID, tokenHash, jti string, expiresAt time.Time) error {
+	query := `UPDATE sessions SET token_hash = $2, jti = $3, expires_at = $4 WHERE sid = $1 AND revoked_at IS NULL AND expires_at > NOW()`
+
+	sqlResult, err := r.db.ExecContext(ctx, query, sessionID, tokenHash, jti, expiresAt)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := sqlResult.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return appErr.ErrMissingSession
+	}
+
+	return nil
+}
+
+func (r *Repository) GetSessionBySID(ctx context.Context, sessionID string) (*domain.Session, error) {
+	query := `SELECT token_hash, jti FROM sessions WHERE sid = $1 AND revoked_at IS NULL`
+
+	var session domain.Session
+	err := r.db.QueryRowContext(ctx, query, sessionID).Scan(&session.TokenHash, &session.JTI)
 	if err != nil {
 		return nil, err
 	}

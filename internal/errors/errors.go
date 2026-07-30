@@ -11,4 +11,7 @@ var (
 	ErrUserAlreadyExists     = errors.New("User already exists")
 	ErrPasswordMismatch      = errors.New("Password and confirm password do not match")
 	ErrInvalidRequestBody    = errors.New("Invalid request body")
+	ErrUnauthorized          = errors.New("Unauthorized")
+	ErrMissingSession        = errors.New("Your session has expired. Please log in again.")
+	ErrInvalidCredentials    = errors.New("Invalid email or password")
 )

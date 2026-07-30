@@ -50,10 +50,10 @@ func (j *JWT) GenerateAccessToken(userID, sid string) (string, error) {
 	return token.SignedString([]byte(j.accessSecret))
 }
 
-func (j *JWT) GenerateRefreshToken(userID, sid string) (string, string, time.Time, error) {
+func (j *JWT) GenerateRefreshToken(userID, sid string) (refreshToken, jti string, expiresAt time.Time, err error) {
 	now := time.Now().UTC()
-	expiresAt := now.Add(time.Hour * 24 * 30)
-	jti := uuid.NewString()
+	expiresAt = now.Add(time.Hour * 24 * 30)
+	jti = uuid.NewString()
 
 	claims := RefreshTokenClaims{
 		SID:  sid,
@@ -66,12 +66,12 @@ func (j *JWT) GenerateRefreshToken(userID, sid string) (string, string, time.Tim
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(j.refreshSecret))
+	refreshToken, err = token.SignedString([]byte(j.refreshSecret))
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
 
-	return signedToken, jti, expiresAt, nil
+	return refreshToken, jti, expiresAt, nil
 }
 
 func (j *JWT) ValidateAccessToken(tokenString string) (*AccessTokenClaims, error) {
@@ -95,6 +95,33 @@ func (j *JWT) ValidateAccessToken(tokenString string) (*AccessTokenClaims, error
 	}
 
 	if claims.Type != "access_token" {
+		return nil, fmt.Errorf("invalid token type")
+	}
+
+	return claims, nil
+}
+
+func (j *JWT) ValidateRefreshToken(tokenString string) (*RefreshTokenClaims, error) {
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		&RefreshTokenClaims{},
+		func(token *jwt.Token) (any, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(j.refreshSecret), nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*RefreshTokenClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	if claims.Type != RefreshToken {
 		return nil, fmt.Errorf("invalid token type")
 	}
 

@@ -52,6 +52,21 @@ func MapError(err error) ErrorMapping {
 			Status: http.StatusBadRequest,
 			Error:  APIError{Code: "INVALID_REQUEST_BODY", Message: appErr.ErrInvalidRequestBody.Error()},
 		}
+	case appErr.ErrUnauthorized:
+		return ErrorMapping{
+			Status: http.StatusUnauthorized,
+			Error:  APIError{Code: "UNAUTHORIZED", Message: appErr.ErrUnauthorized.Error()},
+		}
+	case appErr.ErrMissingSession:
+		return ErrorMapping{
+			Status: http.StatusUnauthorized,
+			Error:  APIError{Code: "MISSING_SESSION", Message: appErr.ErrMissingSession.Error()},
+		}
+	case appErr.ErrInvalidCredentials:
+		return ErrorMapping{
+			Status: http.StatusUnauthorized,
+			Error:  APIError{Code: "INVALID_CREDENTIALS", Message: appErr.ErrInvalidCredentials.Error()},
+		}
 
 	default:
 		return ErrorMapping{
