@@ -144,10 +144,10 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResp
 	result := s.refreshTokenGenerator.GenerateRefreshToken()
 	tokenHash := tokenHelper.HashToken(result.RefreshToken)
 
-	if err := s.repo.UpdateSessionTokenHash(ctx, sid, tokenHash, result.JTI, result.ExpiresAt); err != nil {
-		slog.Error(fmt.Sprintf("login: failed to update session token hash: %v", err))
-		return nil, err
-	}
+	// if err := s.repo.UpdateSessionTokenHash(ctx, sid, tokenHash, result.JTI, result.ExpiresAt); err != nil {
+	// 	slog.Error(fmt.Sprintf("login: failed to update session token hash: %v", err))
+	// 	return nil, err
+	// }
 
 	session := &domain.Session{
 		UserID:    user.ID,

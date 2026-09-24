@@ -126,7 +126,7 @@ func (h *Handler) Login(c *gin.Context) {
 		},
 	}
 
-	c.JSON(200, response.APIResponse[LoginResponse]{
+	c.JSON(http.StatusOK, response.APIResponse[LoginResponse]{
 		Status:  "success",
 		Message: "Login was successful",
 		Data:    &dto,
