@@ -1,10 +1,15 @@
 package auth
 
-import "time"
+import (
+	"atlas/internal/providers/tokens"
+)
 
 var AtlasRefreshTokenCookieName = "atlas_refresh_token"
 
-type TokenGenerator interface {
+type AccessTokenGenerator interface {
 	GenerateAccessToken(userID, sid string) (string, error)
-	GenerateRefreshToken(userID, sid string) (refreshToken, jti string, expiresAt time.Time, err error)
+}
+
+type RefreshTokenGenerator interface {
+	GenerateRefreshToken() *tokens.RefreshTokenResponse
 }

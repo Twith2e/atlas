@@ -9,6 +9,7 @@ type Config struct {
 	AccessTokenSecret  string
 	RefreshTokenSecret string
 	Env                string
+	SentryDSN          string
 }
 
 func Load() *Config {
@@ -19,6 +20,7 @@ func Load() *Config {
 		AccessTokenSecret:  getEnv("ACCESS_TOKEN_SECRET", ""),
 		RefreshTokenSecret: getEnv("REFRESH_TOKEN_SECRET", ""),
 		Env:                getEnv("ENV", "development"),
+		SentryDSN:          getEnv("SENTRY_DSN", ""),
 	}
 }
 

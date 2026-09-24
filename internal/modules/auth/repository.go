@@ -86,6 +86,22 @@ func (r *Repository) GetSessionByTokenHash(ctx context.Context, id string) (*dom
 	return &session, nil
 }
 
+func (r *Repository) FindSessionByTokenHash(ctx context.Context, tokenHash string) (*domain.Session, error) {
+	query := `
+	SELECT id, user_id, jti, session_id, token_hash, expires_at, revoked_at, created_at
+	FROM sessions
+	WHERE token_hash = $1
+	`
+	var session domain.Session
+	err := r.db.
+		QueryRowContext(ctx, query, tokenHash).
+		Scan(&session.ID, &session.UserID, &session.JTI, &session.SessionID, &session.TokenHash, &session.ExpiresAt, &session.RevokedAt, &session.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
 func (r *Repository) IsSessionActive(ctx context.Context, sessionID string) (bool, error) {
 	query := `SELECT EXISTS(SELECT 1 FROM sessions WHERE sid = $1 AND expires_at > NOW() AND revoked_at IS NULL)`
 

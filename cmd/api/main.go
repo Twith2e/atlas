@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/joho/godotenv"
 )
 
@@ -41,7 +42,9 @@ func run(ctx context.Context) error {
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer shutdownCancel()
-	return srv.Shutdown(shutdownCtx)
+	err = srv.Shutdown(shutdownCtx)
+	defer sentry.Flush(2 * time.Second)
+	return err
 }
 
 // @title           Atlas API

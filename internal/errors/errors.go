@@ -14,4 +14,5 @@ var (
 	ErrUnauthorized          = errors.New("Unauthorized")
 	ErrMissingSession        = errors.New("Your session has expired. Please log in again.")
 	ErrInvalidCredentials    = errors.New("Invalid email or password")
+	ErrUserNotFound          = errors.New("User not found")
 )

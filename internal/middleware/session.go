@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SessionGuard(signer Signer) gin.HandlerFunc {
+func SessionGuard(signer Signer, sessionChecker SessionChecker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		refreshToken, err := c.Cookie(AtlasRefreshTokenCookieName)
 		if err != nil {
@@ -32,7 +32,7 @@ func SessionGuard(signer Signer) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := signer.ValidateRefreshToken(refreshToken)
+		session, err := sessionChecker.FindSessionByTokenHash(c.Request.Context(), refreshToken)
 		if err != nil {
 			log.Printf("session: failed to validate refresh token: %v", err)
 			mapped := response.MapError(appErr.ErrUnauthorized)
@@ -43,9 +43,9 @@ func SessionGuard(signer Signer) gin.HandlerFunc {
 			return
 		}
 
-		c.Set(SessionIDContextKey, claims.SID)
+		c.Set(SessionIDContextKey, session.SessionID)
 		c.Set(RefreshTokenContextKey, refreshToken)
-		c.Set(UserPublicIDContextKey, claims.Subject)
+		c.Set(UserPublicIDContextKey, session.UserID)
 
 		c.Next()
 	}
@@ -55,7 +55,7 @@ func RequireActiveSession(checker SessionChecker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sid := c.GetString(SessionIDContextKey)
 
-		active, err := checker.IsSessionActive(c, sid)
+		active, err := checker.IsSessionActive(c.Request.Context(), sid)
 		if err != nil {
 			log.Printf("refresh: failed to check session active: %v", err)
 			c.AbortWithStatusJSON(http.StatusInternalServerError, response.ErrorResponse{

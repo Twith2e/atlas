@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"atlas/internal/domain"
 	"atlas/internal/providers/tokens"
 	"context"
 )
@@ -12,9 +13,9 @@ var AtlasRefreshTokenCookieName = "atlas_refresh_token"
 
 type Signer interface {
 	ValidateAccessToken(tokenString string) (*tokens.AccessTokenClaims, error)
-	ValidateRefreshToken(tokenString string) (*tokens.RefreshTokenClaims, error)
 }
 
 type SessionChecker interface {
+	FindSessionByTokenHash(ctx context.Context, tokenHash string) (*domain.Session, error)
 	IsSessionActive(ctx context.Context, sessionID string) (bool, error)
 }
