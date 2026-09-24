@@ -21,8 +21,13 @@ type Service struct {
 	refreshTokenGenerator RefreshTokenGenerator
 }
 
-func NewService(repo *Repository, db *sql.DB, tokenGenerator AccessTokenGenerator) *Service {
-	return &Service{repo: repo, db: db, accessTokenGenerator: tokenGenerator}
+func NewService(repo *Repository, db *sql.DB, tokenGenerator AccessTokenGenerator, refreshTokenGenerator RefreshTokenGenerator) *Service {
+	return &Service{
+		repo:                  repo,
+		db:                    db,
+		accessTokenGenerator:  tokenGenerator,
+		refreshTokenGenerator: refreshTokenGenerator,
+	}
 }
 
 func (s *Service) Register(ctx context.Context, email, password, confirmPassword, firstName, lastName string) (*RegistrationResponse, error) {

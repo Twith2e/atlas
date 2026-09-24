@@ -60,7 +60,7 @@ func NewRouter(cfg *config.Config) (*gin.Engine, error) {
 	}.NewSentryHandler(ctx)
 
 	logger := slog.New(handler)
-	slog.SetDefault(logger)	
+	slog.SetDefault(logger)
 
 	app := gin.Default()
 
@@ -86,7 +86,7 @@ func NewRouter(cfg *config.Config) (*gin.Engine, error) {
 	tokenGenerator := tokens.NewJWT(cfg.AccessTokenSecret)
 
 	authRepo := auth.NewRepository(db)
-	authService := auth.NewService(authRepo, db, tokenGenerator)
+	authService := auth.NewService(authRepo, db, tokenGenerator, tokens.GenerateRefreshToken())
 	authHandler := auth.NewHandler(authService, cfg.Env)
 	auth.RegisterRoutes(apiV1, middleware.AuthMiddleware(tokenGenerator, authService), middleware.SessionGuard(tokenGenerator, authService), middleware.RequireActiveSession(authService), authHandler)
 
