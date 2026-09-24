@@ -162,6 +162,8 @@ func (s *Service) Login(ctx context.Context, email, password string) (*LoginResp
 		return nil, err
 	}
 
+	slog.Info(fmt.Sprintf("login: session created: %v", session))
+
 	return &LoginResponse{
 		User: &UserResponse{
 			PublicID:  user.PublicID,
