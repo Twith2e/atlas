@@ -84,9 +84,10 @@ func NewRouter(cfg *config.Config) (*gin.Engine, error) {
 	apiV1 := api.Group("/v1")
 
 	tokenGenerator := tokens.NewJWT(cfg.AccessTokenSecret)
+	refreshTokenGenerator := tokens.NewRefreshTokenGen()
 
 	authRepo := auth.NewRepository(db)
-	authService := auth.NewService(authRepo, db, tokenGenerator, tokens.GenerateRefreshToken())
+	authService := auth.NewService(authRepo, db, tokenGenerator, refreshTokenGenerator)
 	authHandler := auth.NewHandler(authService, cfg.Env)
 	auth.RegisterRoutes(apiV1, middleware.AuthMiddleware(tokenGenerator, authService), middleware.SessionGuard(tokenGenerator, authService), middleware.RequireActiveSession(authService), authHandler)
 

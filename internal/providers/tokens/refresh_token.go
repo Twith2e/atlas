@@ -6,7 +6,14 @@ import (
 	"github.com/google/uuid"
 )
 
-func GenerateRefreshToken() *RefreshTokenResponse {
+type RefreshTokenGen struct {
+}
+
+func NewRefreshTokenGen() *RefreshTokenGen {
+	return &RefreshTokenGen{}
+}
+
+func (r *RefreshTokenGen) GenerateRefreshToken() *RefreshTokenResponse {
 	expiresAt := time.Now().Add(time.Hour * 24 * 30).UTC()
 	token := "RT" + uuid.NewString()
 	return &RefreshTokenResponse{
